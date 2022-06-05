@@ -7,11 +7,12 @@
                     <div class="relative text-gray-600">
                       <span class="absolute inset-y-0 left-0 flex items-center pl-2">
                         <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          viewBox="0 0 24 24" class="w-6 h-6 text-gray-300">
+                          viewBox="0 0 24 24" class="w-6 h-6 text-gray-300" wire:target="search" wire:loading.class="animate-ping">
                           <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                       </span>
                       <input type="search" class="block w-full py-2 pl-10 bg-white rounded outline-none focus:outline-none border-0" name="search"
+                        wire:model.debounce.500ms="search" wire:keydown.enter="search()"
                         placeholder="Search" required />
                     </div>
                   </div>
@@ -22,9 +23,10 @@
               <li class="flex-auto overflow-auto bg-white rounded-2xl">
                   @foreach($usersWithChat as $user)
                 <a wire:click="selectOpenedUser({{ $user->id }})"
-                  class="flex items-center px-3 py-2 text-sm transition duration-150 ease-in-out border-b border-gray-300 cursor-pointer hover:bg-gray-100 focus:outline-none">
+                  class="flex items-center px-3 py-2 text-sm transition duration-150 ease-in-out border-b border-gray-300 cursor-pointer hover:bg-gray-100 focus:outline-none
+                  @if($openedUser !=null && $user->id == $openedUser->id) bg-gray-200 @endif">
                   <img class="object-cover w-10 h-10 rounded-full"
-                    src="https://cdn.pixabay.com/photo/2018/09/12/12/14/man-3672010__340.jpg" alt="username" />
+                    src="{{ $user->profile_photo_url }}" />
                   <div class="w-full pb-2">
                     <div class="flex justify-between">
                       <span class="block ml-2 font-semibold text-gray-600 capitalize">{{ $user->name }}</span>
@@ -42,34 +44,28 @@
             <div class="w-full h-full flex flex-col">
                 <div class="relative flex items-center p-3 border-b bg-gray-200 shadow sticky top-0">
                   <img class="object-cover w-10 h-10 rounded-full"
-                    src="https://cdn.pixabay.com/photo/2018/01/15/07/51/woman-3083383__340.jpg" alt="username" />
+                    src="{{ $openedUser->profile_photo_url }}" alt="username" />
                   <span class="block ml-2 font-bold text-gray-600 capitalize">{{ $openedUser->name }}</span>
                   <span class="absolute w-3 h-3 bg-green-600 rounded-full left-10 top-3">
                   </span>
                 </div>
-                <div class="relative w-full flex-auto p-6 overflow-y-auto bg-white">
+                <div class="relative w-full flex-auto p-6 overflow-y-auto bg-white" id="messages-div">
                   <ul class="space-y-2">
-                    <li class="flex justify-start">
-                      <div class="relative max-w-xl px-4 py-2 text-gray-700 rounded shadow">
-                        <span class="block">Hi</span>
-                      </div>
-                    </li>
-                    <li class="flex justify-end">
-                      <div class="relative max-w-xl px-4 py-2 text-gray-700 bg-gray-100 rounded shadow">
-                        <span class="block">Hiiii</span>
-                      </div>
-                    </li>
-                    <li class="flex justify-end">
-                      <div class="relative max-w-xl px-4 py-2 text-gray-700 bg-gray-100 rounded shadow">
-                        <span class="block">how are you?</span>
-                      </div>
-                    </li>
-                    <li class="flex justify-start">
-                      <div class="relative max-w-xl px-4 py-2 text-gray-700 rounded shadow">
-                        <span class="block">Lorem ipsum dolor sit, amet consectetur adipisicing elit.
-                        </span>
-                      </div>
-                    </li>
+                      @foreach($openedUserMessages as $message)
+                        @if($message->sender == auth()->id())
+                          <li class="flex justify-end">
+                            <div class="relative max-w-xl px-4 py-2 text-gray-700 bg-gray-100 rounded shadow">
+                              <span class="block">{{ $message->message }}</span>
+                            </div>
+                          </li>
+                        @else
+                            <li class="flex justify-start">
+                                <div class="relative max-w-xl px-4 py-2 text-gray-700 rounded shadow">
+                                <span class="block">{{ $message->message }}</span>
+                                </div>
+                            </li>
+                        @endif
+                    @endforeach
                   </ul>
                 </div>
     
@@ -89,9 +85,10 @@
                     </svg>
                   </button>
     
-                  <input type="text" placeholder="Message"
-                    class="block w-full py-2 pl-4 mx-3 bg-gray-100 rounded-full outline-none focus:text-gray-700"
-                    name="message" required />
+                  <input type="text" wire:model.defer="newMessage" placeholder="Message" wire:keydown.enter="sendMessage({{ $openedUser->id }})"
+                    class="block w-full py-2 pl-4 mx-3 bg-gray-100 rounded-full outline-none focus:text-gray-700
+                    @error('newMessage') @enderror"
+                    name="message" required wire:target="sendMessage" wire:loading.attr="disabled" />
                   <button>
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24"
                       stroke="currentColor">
@@ -99,19 +96,35 @@
                         d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
                   </button>
-                  <button type="submit">
-                    <svg class="w-5 h-5 text-gray-500 origin-center transform rotate-90" xmlns="http://www.w3.org/2000/svg"
+                  <button wire:click="sendMessage({{ $openedUser->id }})">
+                    <svg wire:target="sendMessage" wire:loading.class="hidden" class="w-5 h-5 text-gray-500 origin-center transform rotate-90" xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20" fill="currentColor">
                       <path
                         d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                     </svg>
+                    <svg wire:loading wire:target="sendMessage" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-500 origin-center animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
                   </button>
                 </div>
             </div>
             @else
-            Select a user to chat
+            <div class="flex h-full bg-white items-center justify-center">
+                Select a chat to open Conversation
+            </div>
             @endif
           </div>
         </div>
       </div>
+      <script>
+          function scrollToBottom()
+          {
+            var objDiv = document.getElementById("messages-div");
+            objDiv.scrollTop = objDiv.scrollHeight;
+          }
+
+        window.addEventListener('scroll-to-bottom', event => {
+            scrollToBottom();  
+        })
+        </script>
 </div>
