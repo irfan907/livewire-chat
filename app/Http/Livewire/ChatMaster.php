@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire;
 
+use App\Events\ReceiveMessage;
 use App\Models\Message;
 use App\Models\User;
 use Livewire\Component;
@@ -24,6 +25,11 @@ class ChatMaster extends Component
     {
         $this->users=User::all()->except(auth()->id());
         $this->usersWithChat=$this->users;
+        $users = User::with(['lastMessage' => function($query)
+            {
+                $query->select('id', 'user_id', 'title', 'created_at');
+            }])->get();
+
         $this->openedUser=$this->usersWithChat->first();
         $this->getOpenedUserMessages();
     }
@@ -54,6 +60,8 @@ class ChatMaster extends Component
         $message->sender=auth()->id();
         $message->receiver=$receiverId;
         $message->save();
+
+        ReceiveMessage::dispatch($message);
 
         $this->openedUserMessages->push($message);
 

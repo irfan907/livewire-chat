@@ -117,14 +117,46 @@
         </div>
       </div>
       <script>
-          function scrollToBottom()
-          {
-            var objDiv = document.getElementById("messages-div");
-            objDiv.scrollTop = objDiv.scrollHeight;
-          }
+        document.addEventListener('livewire:load', function () {
+            function scrollToBottom()
+            {
+                var objDiv = document.getElementById("messages-div");
+                objDiv.scrollTop = objDiv.scrollHeight;
+            }
 
-        window.addEventListener('scroll-to-bottom', event => {
-            scrollToBottom();  
+            window.addEventListener('scroll-to-bottom', event => {
+                scrollToBottom();  
+            })
+
+            function playSound() {
+                const audio = new Audio("{{ asset('sounds/message-notification.mp3') }}");
+                audio.play();
+            }
+
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                showCancelButton: false,
+                //timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                  toast.addEventListener('mouseenter', Swal.stopTimer)
+                  toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+              })
+
+        
+            Echo.private("receive-messages."+"{{auth()->id()}}")
+            .listen('ReceiveMessage', (e) => {
+                console.log(e.message);
+                playSound();
+                Toast.fire({
+                    title: 'New Message',
+                    text: e.message.message,
+                  })
+            });
+
         })
-        </script>
+    </script>
 </div>

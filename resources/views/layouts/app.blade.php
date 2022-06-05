@@ -15,8 +15,6 @@
 
         @livewireStyles
 
-        <!-- Scripts -->
-        <script src="{{ mix('js/app.js') }}" defer></script>
     </head>
     <body class="font-sans antialiased">
         <x-jet-banner />
@@ -38,9 +36,11 @@
                 {{ $slot }}
             </main>
         </div>
-
+        <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         @stack('modals')
-
         @livewireScripts
+        <!-- Scripts -->
+        <script src="{{ mix('js/app.js') }}"></script>
+        @stack('scripts')
     </body>
 </html>
