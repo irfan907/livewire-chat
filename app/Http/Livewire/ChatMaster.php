@@ -25,12 +25,7 @@ class ChatMaster extends Component
     {
         $this->users=User::all()->except(auth()->id());
         $this->usersWithChat=$this->users;
-        $users = User::with(['lastMessage' => function($query)
-            {
-                $query->select('id', 'user_id', 'title', 'created_at');
-            }])->get();
-
-        $this->openedUser=$this->usersWithChat->first();
+        //$this->openedUser=$this->usersWithChat->first();
         $this->getOpenedUserMessages();
     }
 
@@ -38,6 +33,7 @@ class ChatMaster extends Component
     {
         $this->openedUser=$this->users->where('id',$userId)->first();
         $this->getOpenedUserMessages();
+        $this->dispatchBrowserEvent('openedUserChanged',['openedUserId' => $this->openedUser->id]);
     }
 
     public function getOpenedUserMessages()

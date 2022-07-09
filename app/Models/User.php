@@ -63,4 +63,37 @@ class User extends Authenticatable
     {
         return $this->hasMany(Message::class,'sender');
     }
+
+    public function lastMessageWithSender()
+    {
+        $sentLastMessage=Message::where('sender',auth()->id())->where('receiver',$this->id)->latest()->first();
+        $receivedLastMessage=Message::where('receiver',auth()->id())->where('sender',$this->id)->latest()->first();
+
+        if($sentLastMessage ==null || $receivedLastMessage ==null)
+        {
+            if($sentLastMessage ==null && $receivedLastMessage ==null)
+            {
+                return null;
+            }
+
+            if($sentLastMessage == null)
+            {
+                return $receivedLastMessage;
+            }
+            else{
+                return $sentLastMessage;
+            }
+        }
+        else
+        {
+            //return the latest
+            if($sentLastMessage->created_at->gt( $receivedLastMessage->created_at))
+            {
+                return $sentLastMessage;
+            }
+            else{
+                return $receivedLastMessage;
+            }
+        }
+    }
 }

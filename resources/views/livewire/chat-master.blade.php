@@ -20,9 +20,9 @@
   
             <ul class="flex flex-col flex-auto mx-2">
               <h2 class="mb-2 ml-2 text-lg text-gray-600">Chats</h2>
-              <li class="flex-auto overflow-auto bg-white rounded-2xl">
+              <li class="flex-auto overflow-auto bg-white rounded-2xl" id="users-list">
                   @foreach($usersWithChat as $user)
-                <a wire:click="selectOpenedUser({{ $user->id }})"
+                <a wire:click="selectOpenedUser({{ $user->id }})" id="user-{{ $user->id }}"
                   class="flex items-center px-3 py-2 text-sm transition duration-150 ease-in-out border-b border-gray-300 cursor-pointer hover:bg-gray-100 focus:outline-none
                   @if($openedUser !=null && $user->id == $openedUser->id) bg-gray-200 @endif">
                   <img class="object-cover w-10 h-10 rounded-full"
@@ -32,7 +32,7 @@
                       <span class="block ml-2 font-semibold text-gray-600 capitalize">{{ $user->name }}</span>
                       <span class="block ml-2 text-sm text-gray-600">25 minutes</span>
                     </div>
-                    <span class="block ml-2 text-sm text-gray-600">bye</span>
+                    <span class="block ml-2 text-sm text-gray-600 message">{{ $user->lastMessageWithSender() != null ? $user->lastMessageWithSender()->message:'' }}</span>
                   </div>
                 </a>
                 @endforeach
@@ -50,18 +50,18 @@
                   </span>
                 </div>
                 <div class="relative w-full flex-auto p-6 overflow-y-auto bg-white" id="messages-div">
-                  <ul class="space-y-2">
+                  <ul class="space-y-2" id="messages-list">
                       @foreach($openedUserMessages as $message)
                         @if($message->sender == auth()->id())
-                          <li class="flex justify-end">
+                          <li class="flex justify-end sent-message">
                             <div class="relative max-w-xl px-4 py-2 text-gray-700 bg-gray-100 rounded shadow">
-                              <span class="block">{{ $message->message }}</span>
+                              <span class="block message">{{ $message->message }}</span>
                             </div>
                           </li>
                         @else
-                            <li class="flex justify-start">
+                            <li class="flex justify-start received-message">
                                 <div class="relative max-w-xl px-4 py-2 text-gray-700 rounded shadow">
-                                <span class="block">{{ $message->message }}</span>
+                                <span class="block message">{{ $message->message }}</span>
                                 </div>
                             </li>
                         @endif
@@ -117,6 +117,8 @@
         </div>
       </div>
       <script>
+        var openedUserId='';
+
         document.addEventListener('livewire:load', function () {
             function scrollToBottom()
             {
@@ -126,6 +128,10 @@
 
             window.addEventListener('scroll-to-bottom', event => {
                 scrollToBottom();  
+            })
+
+            window.addEventListener('openedUserChanged', event => {
+              openedUserId=event.detail.openedUserId
             })
 
             function playSound() {
@@ -149,12 +155,27 @@
         
             Echo.private("receive-messages."+"{{auth()->id()}}")
             .listen('ReceiveMessage', (e) => {
-                console.log(e.message);
+                
+                //console.log(e.message);
                 playSound();
                 Toast.fire({
                     title: 'New Message',
                     text: e.message.message,
                   })
+                  
+                  //add message to user sidebar
+                  $('#user-'+e.message.sender).find('.message').html('<strong>'+e.message.message+'</strong>');
+                  //dont'know about this line
+                  $('#user-'+e.message.sender).prependTo("#users-list");
+                  //clone a recieve message block and replace message text 
+                  var messageBlock=$('.received-message:last').clone();
+                  //if sender chat is opened, append message to it
+                  if(openedUserId == e.message.sender){
+                    messageBlock.find('.message').html(e.message.message);
+                    $('#messages-list').append(messageBlock);
+                  }
+                  scrollToBottom();
+                  
             });
 
         })
